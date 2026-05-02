@@ -67,8 +67,7 @@ platforms:
     - id: "cls-hot"
       name: "财联社热门"
 
-    - id: "weibo"
-      name: "微博"
+    
 
     - id: "douyin"
       name: "抖音"
