@@ -28,14 +28,22 @@ on:
     #
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     #
-    # 📝 修改运行时间：只改第一个数字（0-59），表示每小时第几分钟运行
-    # 📝 Change time: Only modify the first number (0-59) = minute of each hour
+    # 📝 当前运行时间：每天北京时间 08:33 和 20:33 各运行一次
+    # 📝 Current schedule: runs twice daily at 08:33 and 20:33 Beijing time
+    #
+    # ⚠️ GitHub Actions cron 使用 UTC 时间：
+    #    北京时间 08:33 = UTC 00:33
+    #    北京时间 20:33 = UTC 12:33
+    # ⚠️ GitHub Actions cron uses UTC time:
+    #    Beijing 08:33 = UTC 00:33
+    #    Beijing 20:33 = UTC 12:33
     #
     # 示例 / Examples:
     #   "15 * * * *"     → 每小时第15分钟 / minute 15 every hour
     #   "30 0-14 * * *"  → 北京时间 8:00-22:00 每小时第30分钟 / Beijing 8am-10pm
+    #   "33 0,12 * * *"  → 北京时间 8:33、20:33 / Beijing 8:33am, 8:33pm
     #
-    - cron: "33 * * * *"
+    - cron: "33 0,12 * * *"
 
   workflow_dispatch:
 
