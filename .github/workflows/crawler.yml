@@ -28,8 +28,13 @@ on:
     #
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     #
-    # 📝 当前运行时间：每天北京时间 08:33 和 20:33 各运行一次
-    # 📝 Current schedule: runs twice daily at 08:33 and 20:33 Beijing time
+    # 📝 主推送时间：每天北京时间 08:33 和 20:33 各运行一次
+    # 📝 Primary schedule: runs twice daily at 08:33 and 20:33 Beijing time
+    #
+    # 为降低 GitHub Actions schedule 被延迟/丢弃的影响，每个时段增加 15 分钟后的备份触发。
+    # 下方 Deduplicate scheduled window 步骤会阻止同一早/晚时段重复推送。
+    # To reduce missed GitHub Actions schedule events, each window has a 15-minute backup trigger.
+    # The Deduplicate scheduled window step prevents duplicate pushes in the same morning/evening window.
     #
     # ⚠️ GitHub Actions cron 使用 UTC 时间：
     #    北京时间 08:33 = UTC 00:33
@@ -42,14 +47,16 @@ on:
     #   "15 * * * *"     → 每小时第15分钟 / minute 15 every hour
     #   "30 0-14 * * *"  → 北京时间 8:00-22:00 每小时第30分钟 / Beijing 8am-10pm
     #   "33 0,12 * * *"  → 北京时间 8:33、20:33 / Beijing 8:33am, 8:33pm
+    #   "48 0,12 * * *"  → 北京时间 8:48、20:48 备份触发 / Beijing backup trigger
     #
     - cron: "33 0,12 * * *"
+    - cron: "48 0,12 * * *"
 
   workflow_dispatch:
 
 concurrency:
   group: crawler-${{ github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -101,6 +108,53 @@ jobs:
             fi
           fi
 
+      - name: Deduplicate scheduled window
+        if: success() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_JSON=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}")
+          RUN_CREATED=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["created_at"])' <<< "$RUN_JSON")
+          RUNS_JSON=$(gh api "repos/${{ github.repository }}/actions/workflows/crawler.yml/runs?event=schedule&branch=${{ github.ref_name }}&per_page=50")
+
+          export RUN_CREATED RUNS_JSON CURRENT_RUN_ID="${{ github.run_id }}"
+          python3 <<'PY'
+          import json
+          import os
+          from datetime import datetime
+
+          current_run_id = int(os.environ["CURRENT_RUN_ID"])
+          current_created = datetime.fromisoformat(os.environ["RUN_CREATED"].replace("Z", "+00:00"))
+          runs = json.loads(os.environ["RUNS_JSON"]).get("workflow_runs", [])
+
+          duplicate = False
+          for run in runs:
+              if run.get("id") == current_run_id:
+                  continue
+              if run.get("event") != "schedule" or run.get("conclusion") != "success":
+                  continue
+
+              run_created = datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
+              same_window = (
+                  run_created.date() == current_created.date()
+                  and run_created.hour == current_created.hour
+              )
+              if same_window:
+                  duplicate = True
+                  print(
+                      "Duplicate scheduled window already succeeded: "
+                      f"run #{run.get('run_number')} at {run.get('created_at')}"
+                  )
+                  break
+
+          if duplicate:
+              with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+                  env_file.write("SKIP_RUN=true\n")
+              print("Skipping this backup run to avoid duplicate push.")
+          else:
+              print("No successful run found in this scheduled window; continuing.")
+          PY
+
 
       # --------------------------------------------------------------------------------
       # 🚦 TRAFFIC CONTROL / 流量控制
@@ -120,21 +174,21 @@ jobs:
       #     echo "▶️  Delay finished. Starting crawler..."
 
       - name: Set up Python
-        if: success()
+        if: success() && env.SKIP_RUN != 'true'
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
       - name: Install uv
-        if: success()
+        if: success() && env.SKIP_RUN != 'true'
         uses: astral-sh/setup-uv@v7
 
       - name: Install dependencies
-        if: success()
+        if: success() && env.SKIP_RUN != 'true'
         run: uv sync --frozen --no-dev
 
       - name: Verify required files
-        if: success()
+        if: success() && env.SKIP_RUN != 'true'
         run: |
           if [ ! -f config/config.yaml ]; then
             echo "Error: Config missing"
@@ -142,7 +196,7 @@ jobs:
           fi
 
       - name: Run crawler
-        if: success()
+        if: success() && env.SKIP_RUN != 'true'
         env:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
