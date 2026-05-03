@@ -140,6 +140,36 @@ rss:
       name: "The Gradient"
       url: "https://thegradient.pub/rss/"
 
+    - id: "global-macro-google-cn"
+      name: "全球宏观 Google News"
+      url: "https://news.google.com/rss/search?q=%E7%BE%8E%E5%9B%BD%E9%80%9A%E8%83%80+%E7%BE%8E%E8%81%94%E5%82%A8+%E9%9D%9E%E5%86%9C+GDP+PMI+%E7%BE%8E%E5%80%BA%E6%94%B6%E7%9B%8A%E7%8E%87+%E7%BE%8E%E5%85%83%E6%B5%81%E5%8A%A8%E6%80%A7&hl=zh-CN&gl=CN&ceid=CN:zh-Hans"
+      max_age_days: 2
+
+    - id: "us-assets-google-cn"
+      name: "美股黄金美元 Google News"
+      url: "https://news.google.com/rss/search?q=%E7%BE%8E%E8%82%A1%E4%BC%B0%E5%80%BC+%E9%BB%84%E9%87%91+%E7%BE%8E%E5%85%83+%E5%AE%9E%E9%99%85%E5%88%A9%E7%8E%87+%E5%A4%AE%E8%A1%8C%E4%B9%B0%E9%87%91+%E7%BE%8E%E5%80%BA&hl=zh-CN&gl=CN&ceid=CN:zh-Hans"
+      max_age_days: 2
+
+    - id: "geopolitics-assets-google-cn"
+      name: "地缘资产影响 Google News"
+      url: "https://news.google.com/rss/search?q=%E4%B8%AD%E7%BE%8E%E5%85%B3%E7%B3%BB+%E5%85%B3%E7%A8%8E+%E4%BA%A7%E4%B8%9A%E9%93%BE+%E4%BF%84%E4%B9%8C+%E4%B8%AD%E4%B8%9C+%E5%8F%B0%E6%B5%B7+%E8%83%BD%E6%BA%90%E4%BE%9B%E5%BA%94%E9%93%BE&hl=zh-CN&gl=CN&ceid=CN:zh-Hans"
+      max_age_days: 2
+
+    - id: "china-economy-google-cn"
+      name: "中国经济地产 Google News"
+      url: "https://news.google.com/rss/search?q=%E4%B8%AD%E5%9B%BD%E7%BB%8F%E6%B5%8E+%E6%88%BF%E5%9C%B0%E4%BA%A7+%E5%B1%85%E6%B0%91%E6%9D%A0%E6%9D%86+%E6%B6%88%E8%B4%B9+%E5%87%BA%E5%8F%A3+%E4%BA%BA%E6%B0%91%E5%B8%81+A%E8%82%A1+%E6%B8%AF%E8%82%A1+%E6%94%BF%E7%AD%96%E5%88%BA%E6%BF%80&hl=zh-CN&gl=CN&ceid=CN:zh-Hans"
+      max_age_days: 2
+
+    - id: "global-macro-google-en"
+      name: "Global Macro Google News"
+      url: "https://news.google.com/rss/search?q=US+inflation+Fed+jobs+GDP+PMI+Treasury+yields+dollar+liquidity+fiscal+deficit&hl=en-US&gl=US&ceid=US:en"
+      max_age_days: 2
+
+    - id: "ai-markets-security-google-en"
+      name: "AI Industry Google News"
+      url: "https://news.google.com/rss/search?q=AI+models+AI+products+cybersecurity+chips+AI+jobs+automation+GPU+data+centers&hl=en-US&gl=US&ceid=US:en"
+      max_age_days: 2
+
 
 
 # ===============================================================
@@ -171,7 +201,7 @@ report:
 
   rank_threshold: 5                   # 排名高亮阈值（影响展示强调，不改变抓取范围）
 
-  max_news_per_keyword: 0             # 每个关键词/标签最大显示数量（0=不限制，仅影响展示裁剪）
+  max_news_per_keyword: 6             # 每个关键词/标签最大显示数量（0=不限制，仅影响展示裁剪）
 
 
 # ===============================================================
@@ -185,7 +215,7 @@ report:
 # 5) 这里决定“筛选路径”，不决定 AI 模型（模型在 ai 段）
 # ===============================================================
 filter:
-  method: "keyword"                     # 可选: keyword | ai
+  method: "ai"                          # 可选: keyword | ai
 
   # AI 模式标签排序开关（仅 ai 模式生效）
   # true: 按标签优先级排序（来自兴趣描述提取顺序）
@@ -214,7 +244,7 @@ ai_filter:
   batch_interval: 2                       # 分批处理时，每批之间的等待时间（秒）
                                           # 避免频繁调用 API 触发限流，设为 0 则不等待
 
-  min_score: 0.7                          # 推送最低分数阈值（0.0 ~ 1.0）
+  min_score: 0.75                         # 推送最低分数阈值（0.0 ~ 1.0）
                                           # 0 = 不过滤；值越高越严格（推荐先用 0.5~0.7）
 
   # 兴趣描述文件
@@ -226,7 +256,7 @@ ai_filter:
   # 全量重分类触发阈值（0~1）
   # change_ratio >= 此值：全量重分类；否则增量更新
   # 0.0 最准确最费；1.0 最省但可能陈旧；0.6 是平衡点
-  reclassify_threshold: 0.6
+  reclassify_threshold: 0.45
 
   # 以下提示词模板一般无需修改（不建议动）
 
@@ -475,12 +505,12 @@ ai:
 # 模型配置见上方 ai 配置段
 # ===============================================================
 ai_analysis:
-  enabled: false
+  enabled: true
   language: "Chinese"
   prompt_file: "ai_analysis_prompt.txt"
   mode: "follow_report"
   max_news_for_analysis: 150
-  include_rss: false
+  include_rss: true
   include_standalone: true
   include_rank_timeline: true
 
