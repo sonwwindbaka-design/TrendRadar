@@ -3,54 +3,28 @@ name: Get Hot News
 on:
   schedule:
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # ⚠️ 试用版说明 / Trial Mode
+    # ⏰ 自动推送说明 / Scheduled Push
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     #
-    # 🔄 运行机制 / How it works:
-    #    - 每个周期为 7 天，届时自动停止
-    #    - 运行 "Check In" 会重置周期（重新开始 7 天倒计时，而非累加）
-    #    - Each cycle is 7 days, then auto-stops
-    #    - "Check In" resets the cycle (restarts 7-day countdown, not cumulative)
-    #
-    # 💡 设计初衷 / Why this design:
-    #    如果 7 天都忘了签到，或许这些资讯对你来说并非刚需
-    #    适时的暂停，能帮你从信息流中抽离，给大脑留出喘息的空间
-    #    If you forget for 7 days, maybe you don't really need it
-    #    A timely pause helps you detach from the stream and gives your mind space
-    #
-    # 🙏 珍惜资源 / Respect shared resources:
-    #    GitHub Actions 是平台提供的公共资源，每次运行都会消耗算力
-    #    签到机制确保资源分配给真正需要的用户，感谢你的理解与配合
-    #    GitHub Actions is a shared public resource provided by the platform
-    #    Check-in ensures resources go to those who truly need it — thank you
-    #
-    # 🚀 长期使用请部署 Docker 版本 / For long-term use, deploy Docker version
-    #
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    #
-    # 📝 主推送时间：每天北京时间 08:33 和 20:33 各运行一次
-    # 📝 Primary schedule: runs twice daily at 08:33 and 20:33 Beijing time
+    # 📝 主推送时间：每天北京时间 08:33、13:33、18:33 运行
+    # 📝 Primary schedule: runs at 08:33, 13:33, and 18:33 Beijing time
     #
     # 为降低 GitHub Actions schedule 被延迟/丢弃的影响，每个时段增加 15 分钟后的备份触发。
     # 下方 Deduplicate scheduled window 步骤会阻止同一早/晚时段重复推送。
     # To reduce missed GitHub Actions schedule events, each window has a 15-minute backup trigger.
     # The Deduplicate scheduled window step prevents duplicate pushes in the same morning/evening window.
     #
-    # ⚠️ GitHub Actions cron 使用 UTC 时间：
-    #    北京时间 08:33 = UTC 00:33
-    #    北京时间 20:33 = UTC 12:33
-    # ⚠️ GitHub Actions cron uses UTC time:
-    #    Beijing 08:33 = UTC 00:33
-    #    Beijing 20:33 = UTC 12:33
+    # ⚠️ GitHub Actions cron 使用 UTC 时间。
+    # ⚠️ GitHub Actions cron uses UTC time.
     #
     # 示例 / Examples:
     #   "15 * * * *"     → 每小时第15分钟 / minute 15 every hour
     #   "30 0-14 * * *"  → 北京时间 8:00-22:00 每小时第30分钟 / Beijing 8am-10pm
-    #   "33 0,12 * * *"  → 北京时间 8:33、20:33 / Beijing 8:33am, 8:33pm
-    #   "48 0,12 * * *"  → 北京时间 8:48、20:48 备份触发 / Beijing backup trigger
+    #   "33 0,5,10 * * *"  → 北京时间 8:33、13:33、18:33 / every 5 hours in Beijing daytime
+    #   "48 0,5,10 * * *"  → 同一时段 15 分钟后的备份触发 / backup trigger 15 minutes later
     #
-    - cron: "33 0,12 * * *"
-    - cron: "48 0,12 * * *"
+    - cron: "33 0,5,10 * * *"
+    - cron: "48 0,5,10 * * *"
 
   workflow_dispatch:
 
@@ -60,7 +34,7 @@ concurrency:
 
 permissions:
   contents: read
-  actions: write
+  actions: read
 
 jobs:
   crawl:
@@ -74,59 +48,30 @@ jobs:
           fetch-depth: 1
           clean: true
 
-      - name: Check Expiration
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          WORKFLOW_FILE="crawler.yml"
-          API_URL="repos/${{ github.repository }}/actions/workflows/$WORKFLOW_FILE/runs"
-
-          TOTAL=$(gh api "$API_URL" --jq '.total_count')
-          if [ -z "$TOTAL" ] || [ "$TOTAL" -eq 0 ]; then
-            echo "No previous runs found, skipping expiration check"
-            exit 0
-          fi
-
-          LAST_PAGE=$(( (TOTAL + 99) / 100 ))
-          FIRST_RUN_DATE=$(gh api "$API_URL?per_page=100&page=$LAST_PAGE" --jq '.workflow_runs[-1].created_at')
-
-          if [ -n "$FIRST_RUN_DATE" ]; then
-            CURRENT_TIMESTAMP=$(date +%s)
-            FIRST_RUN_TIMESTAMP=$(date -d "$FIRST_RUN_DATE" +%s)
-            DIFF_SECONDS=$((CURRENT_TIMESTAMP - FIRST_RUN_TIMESTAMP))
-            LIMIT_SECONDS=604800
-
-            if [ $DIFF_SECONDS -gt $LIMIT_SECONDS ]; then
-              echo "⚠️ 试用期已结束，请运行 'Check In' 签到续期"
-              echo "⚠️ Trial expired. Run 'Check In' to renew."
-              gh workflow disable "$WORKFLOW_FILE"
-              exit 1
-            else
-              DAYS_LEFT=$(( (LIMIT_SECONDS - DIFF_SECONDS) / 86400 ))
-              echo "✅ 试用期剩余 ${DAYS_LEFT} 天，到期前请运行 'Check In' 签到续期"
-              echo "✅ Trial: ${DAYS_LEFT} days left. Run 'Check In' before expiry to renew."
-            fi
-          fi
-
       - name: Deduplicate scheduled window
         if: success() && github.event_name == 'schedule'
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RUN_JSON=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}")
-          RUN_CREATED=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["created_at"])' <<< "$RUN_JSON")
-          RUNS_JSON=$(gh api "repos/${{ github.repository }}/actions/workflows/crawler.yml/runs?event=schedule&branch=${{ github.ref_name }}&per_page=50")
+          RUN_JSON_FILE="${RUNNER_TEMP}/current-run.json"
+          RUNS_JSON_FILE="${RUNNER_TEMP}/scheduled-runs.json"
 
-          export RUN_CREATED RUNS_JSON CURRENT_RUN_ID="${{ github.run_id }}"
+          gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" > "$RUN_JSON_FILE"
+          gh api "repos/${{ github.repository }}/actions/workflows/crawler.yml/runs?event=schedule&branch=${{ github.ref_name }}&per_page=50" > "$RUNS_JSON_FILE"
+
+          export RUN_JSON_FILE RUNS_JSON_FILE CURRENT_RUN_ID="${{ github.run_id }}"
           python3 <<'PY'
           import json
           import os
           from datetime import datetime
 
           current_run_id = int(os.environ["CURRENT_RUN_ID"])
-          current_created = datetime.fromisoformat(os.environ["RUN_CREATED"].replace("Z", "+00:00"))
-          runs = json.loads(os.environ["RUNS_JSON"]).get("workflow_runs", [])
+          with open(os.environ["RUN_JSON_FILE"], encoding="utf-8") as fh:
+              current_run = json.load(fh)
+          with open(os.environ["RUNS_JSON_FILE"], encoding="utf-8") as fh:
+              runs = json.load(fh).get("workflow_runs", [])
+
+          current_created = datetime.fromisoformat(current_run["created_at"].replace("Z", "+00:00"))
 
           duplicate = False
           for run in runs:
@@ -156,6 +101,14 @@ jobs:
               print("No successful run found in this scheduled window; continuing.")
           PY
 
+      - name: Restore crawler history
+        if: success() && env.SKIP_RUN != 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: output
+          key: trendradar-output-${{ github.run_id }}
+          restore-keys: |
+            trendradar-output-
 
       # --------------------------------------------------------------------------------
       # 🚦 TRAFFIC CONTROL / 流量控制
@@ -231,3 +184,10 @@ jobs:
           S3_REGION: ${{ secrets.S3_REGION }}
           GITHUB_ACTIONS: true
         run: uv run python -m trendradar
+
+      - name: Save crawler history
+        if: success() && env.SKIP_RUN != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: output
+          key: trendradar-output-${{ github.run_id }}
