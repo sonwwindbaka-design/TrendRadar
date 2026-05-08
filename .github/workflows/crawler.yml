@@ -1,31 +1,8 @@
 name: Get Hot News
 
 on:
-  schedule:
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # ⏰ 自动推送说明 / Scheduled Push
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    #
-    # 📝 主推送时间：每天北京时间 08:33、13:33、18:33 运行
-    # 📝 Primary schedule: runs at 08:33, 13:33, and 18:33 Beijing time
-    #
-    # 为降低 GitHub Actions schedule 被延迟/丢弃的影响，每个时段增加 15 分钟后的备份触发。
-    # 下方 Deduplicate scheduled window 步骤会阻止同一早/晚时段重复推送。
-    # To reduce missed GitHub Actions schedule events, each window has a 15-minute backup trigger.
-    # The Deduplicate scheduled window step prevents duplicate pushes in the same morning/evening window.
-    #
-    # ⚠️ GitHub Actions cron 使用 UTC 时间。
-    # ⚠️ GitHub Actions cron uses UTC time.
-    #
-    # 示例 / Examples:
-    #   "15 * * * *"     → 每小时第15分钟 / minute 15 every hour
-    #   "30 0-14 * * *"  → 北京时间 8:00-22:00 每小时第30分钟 / Beijing 8am-10pm
-    #   "33 0,5,10 * * *"  → 北京时间 8:33、13:33、18:33 / every 5 hours in Beijing daytime
-    #   "48 0,5,10 * * *"  → 同一时段 15 分钟后的备份触发 / backup trigger 15 minutes later
-    #
-    - cron: "33 0,5,10 * * *"
-    - cron: "48 0,5,10 * * *"
-
+  # Local launchd now owns the recurring 08:33 and 20:33 runs.
+  # Keep manual dispatch as a GitHub Actions fallback.
   workflow_dispatch:
 
 concurrency:
