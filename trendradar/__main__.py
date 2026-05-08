@@ -1152,6 +1152,8 @@ class NewsAnalyzer:
             freshness_config = rss_config.get("FRESHNESS_FILTER", {})
             freshness_enabled = freshness_config.get("ENABLED", True)
             default_max_age_days = freshness_config.get("MAX_AGE_DAYS", 3)
+            cached_rss_data = self.storage_manager.get_latest_rss_data()
+            cached_items = cached_rss_data.items if cached_rss_data else {}
 
             fetcher = RSSFetcher(
                 feeds=feeds,
@@ -1162,6 +1164,7 @@ class NewsAnalyzer:
                 timezone=timezone,
                 freshness_enabled=freshness_enabled,
                 default_max_age_days=default_max_age_days,
+                cached_items=cached_items,
             )
 
             # 抓取数据

@@ -1,3 +1,6 @@
 .env
 .env.local
 logs/
+__pycache__/
+*.pyc
+output/rss_http_cache.json

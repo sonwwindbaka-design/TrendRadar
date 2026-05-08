@@ -7,7 +7,9 @@ RSS 抓取器
 
 import time
 import random
+import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 
 import requests
@@ -41,6 +43,8 @@ class RSSFetcher:
         timezone: str = DEFAULT_TIMEZONE,
         freshness_enabled: bool = True,
         default_max_age_days: int = 3,
+        cached_items: Optional[Dict[str, List[RSSItem]]] = None,
+        cache_path: str = "output/rss_http_cache.json",
     ):
         """
         初始化抓取器
@@ -63,9 +67,58 @@ class RSSFetcher:
         self.timezone = timezone
         self.freshness_enabled = freshness_enabled
         self.default_max_age_days = default_max_age_days
+        self.cached_items = cached_items or {}
+        self.cache_path = Path(cache_path)
+        self.http_cache = self._load_http_cache()
 
         self.parser = RSSParser()
         self.session = self._create_session()
+
+    def _load_http_cache(self) -> Dict[str, Dict[str, str]]:
+        """加载 RSS HTTP 缓存元数据（ETag / Last-Modified）"""
+        try:
+            if not self.cache_path.exists():
+                return {}
+            with self.cache_path.open("r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            if isinstance(data, dict):
+                return data
+        except Exception as e:
+            print(f"[RSS] HTTP 缓存读取失败，忽略: {e}")
+        return {}
+
+    def _save_http_cache(self) -> None:
+        """保存 RSS HTTP 缓存元数据"""
+        try:
+            self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+            with self.cache_path.open("w", encoding="utf-8") as fh:
+                json.dump(self.http_cache, fh, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"[RSS] HTTP 缓存保存失败，忽略: {e}")
+
+    def _conditional_headers(self, feed: RSSFeedConfig) -> Dict[str, str]:
+        """构建条件请求头"""
+        cached = self.http_cache.get(feed.id, {})
+        headers = {}
+        if cached.get("etag"):
+            headers["If-None-Match"] = cached["etag"]
+        if cached.get("last_modified"):
+            headers["If-Modified-Since"] = cached["last_modified"]
+        return headers
+
+    def _update_http_cache(self, feed: RSSFeedConfig, response: requests.Response) -> None:
+        """从响应更新 HTTP 缓存元数据"""
+        etag = response.headers.get("ETag")
+        last_modified = response.headers.get("Last-Modified")
+        if not etag and not last_modified:
+            return
+
+        self.http_cache[feed.id] = {
+            "url": feed.url,
+            "etag": etag or "",
+            "last_modified": last_modified or "",
+        }
+        self._save_http_cache()
 
     def _create_session(self) -> requests.Session:
         """创建请求会话"""
@@ -137,8 +190,41 @@ class RSSFetcher:
             (条目列表, 错误信息) 元组
         """
         try:
-            response = self.session.get(feed.url, timeout=self.timeout)
+            response = self.session.get(
+                feed.url,
+                timeout=self.timeout,
+                headers=self._conditional_headers(feed),
+            )
+
+            if response.status_code == 304:
+                cached = self.cached_items.get(feed.id, [])
+                if cached:
+                    now = get_configured_time(self.timezone)
+                    crawl_time = now.strftime("%H:%M")
+                    items = []
+                    for item in cached:
+                        items.append(RSSItem(
+                            title=item.title,
+                            feed_id=feed.id,
+                            feed_name=feed.name,
+                            url=item.url,
+                            published_at=item.published_at,
+                            summary=item.summary,
+                            author=item.author,
+                            crawl_time=crawl_time,
+                            first_time=item.first_time or item.crawl_time,
+                            last_time=crawl_time,
+                            count=item.count,
+                        ))
+                    print(f"[RSS] {feed.name}: 内容未变化，复用缓存 {len(items)} 条")
+                    return items, None
+
+                error = "内容未变化 (304)，但本地暂无缓存"
+                print(f"[RSS] {feed.name}: {error}")
+                return [], error
+
             response.raise_for_status()
+            self._update_http_cache(feed, response)
 
             parsed_items = self.parser.parse(response.text, feed.url)
 
