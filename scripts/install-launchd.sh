@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-PROJECT_ROOT="/Users/LunMin/Documents/New project/TrendRadar"
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LABEL="com.lunmin.trendradar"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 RUNNER="$PROJECT_ROOT/scripts/run-trendradar-launchd.sh"

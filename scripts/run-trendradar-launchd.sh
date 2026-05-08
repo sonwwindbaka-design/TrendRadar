@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-PROJECT_ROOT="/Users/LunMin/Documents/New project/TrendRadar"
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOG_DIR="$PROJECT_ROOT/logs"
 LOCK_DIR="$LOG_DIR/trendradar.lock"
 

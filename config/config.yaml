@@ -170,6 +170,9 @@ rss:
       url: "https://news.google.com/rss/search?q=AI+models+AI+products+cybersecurity+chips+AI+jobs+automation+GPU+data+centers&hl=en-US&gl=US&ceid=US:en"
       max_age_days: 2
 
+    - id: "aihot-daily"
+      name: "AIHot Daily"
+      url: "https://aihot.virxact.com/feed/daily.xml"
 
 
 # ===============================================================
@@ -201,7 +204,7 @@ report:
 
   rank_threshold: 5                   # 排名高亮阈值（影响展示强调，不改变抓取范围）
 
-  max_news_per_keyword: 6             # 每个关键词/标签最大显示数量（0=不限制，仅影响展示裁剪）
+  max_news_per_keyword: 0             # 每个关键词/标签最大显示数量（0=不限制，仅影响展示裁剪）
 
 
 # ===============================================================
@@ -317,7 +320,7 @@ display:
   standalone:
     platforms: ["zhihu", "wallstreetcn-hot"]     # 热榜平台 ID 列表（如 ["zhihu", "weibo"]）
     rss_feeds: []                     # RSS 源 ID 列表（如 ["hacker-news"]）
-    max_items: 20                     # 每个源最多展示条数（0=不限制）
+    max_items: 0                      # 每个源最多展示条数（0=不限制）
 
 
 # ===============================================================
