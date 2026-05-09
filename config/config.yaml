@@ -170,9 +170,9 @@ rss:
       url: "https://news.google.com/rss/search?q=AI+models+AI+products+cybersecurity+chips+AI+jobs+automation+GPU+data+centers&hl=en-US&gl=US&ceid=US:en"
       max_age_days: 2
 
-    - id: "aihot-daily"
-      name: "AIHot Daily"
-      url: "https://aihot.virxact.com/feed/daily.xml"
+    - id: "aihot"
+      name: "AI HOT"
+      url: "https://aihot.virxact.com/feed.xml"
 
 
 # ===============================================================
