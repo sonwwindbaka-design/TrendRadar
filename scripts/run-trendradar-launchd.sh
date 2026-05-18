@@ -6,6 +6,7 @@ LOG_DIR="$PROJECT_ROOT/logs"
 LOCK_DIR="$LOG_DIR/trendradar.lock"
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.cargo/bin"
+export TRENDRADAR_OPEN_BROWSER="${TRENDRADAR_OPEN_BROWSER:-false}"
 
 mkdir -p "$LOG_DIR"
 
